@@ -1,11 +1,13 @@
-import { useState } from 'react'
-import { createMonitor } from '../lib/api'
+import { useState, useEffect } from 'react'
+import { createMonitor, updateMonitor, Monitor } from '../lib/api'
 
 interface AddMonitorFormProps {
   onSuccess: () => void
+  onCancel?: () => void
+  editMonitor?: Monitor | null
 }
 
-export default function AddMonitorForm({ onSuccess }: AddMonitorFormProps) {
+export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: AddMonitorFormProps) {
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
   const [interval, setInterval] = useState(5)
@@ -15,6 +17,21 @@ export default function AddMonitorForm({ onSuccess }: AddMonitorFormProps) {
   const [body, setBody] = useState('')
   const [username, setUsername] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const isEditMode = !!editMonitor
+
+  useEffect(() => {
+    if (editMonitor) {
+      setName(editMonitor.name)
+      setUrl(editMonitor.url)
+      setInterval(editMonitor.check_interval)
+      setWebhookUrl(editMonitor.webhook_url || '')
+      setContentType(editMonitor.webhook_content_type || 'application/json')
+      setHeaders(editMonitor.webhook_headers || '')
+      setBody(editMonitor.webhook_body || '')
+      setUsername(editMonitor.webhook_username || '')
+    }
+  }, [editMonitor])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -47,7 +64,7 @@ export default function AddMonitorForm({ onSuccess }: AddMonitorFormProps) {
 
     setIsSubmitting(true)
     try {
-      await createMonitor({
+      const monitorData = {
         name: name.trim(),
         url: url.trim(),
         check_interval: interval,
@@ -56,20 +73,27 @@ export default function AddMonitorForm({ onSuccess }: AddMonitorFormProps) {
         webhook_headers: Object.keys(parsedHeaders).length > 0 ? parsedHeaders : undefined,
         webhook_body: Object.keys(parsedBody).length > 0 ? parsedBody : undefined,
         webhook_username: username.trim() || undefined
-      })
+      }
 
-      setName('')
-      setUrl('')
-      setInterval(5)
-      setWebhookUrl('')
-      setContentType('application/json')
-      setHeaders('')
-      setBody('')
-      setUsername('')
+      if (isEditMode && editMonitor) {
+        await updateMonitor(editMonitor.id, monitorData)
+      } else {
+        await createMonitor(monitorData)
+        // 只在添加模式下清空表单
+        setName('')
+        setUrl('')
+        setInterval(5)
+        setWebhookUrl('')
+        setContentType('application/json')
+        setHeaders('')
+        setBody('')
+        setUsername('')
+      }
+
       onSuccess()
     } catch (error) {
-      console.error('Error adding monitor:', error)
-      alert('添加失败')
+      console.error('Error saving monitor:', error)
+      alert(isEditMode ? '保存失败' : '添加失败')
     } finally {
       setIsSubmitting(false)
     }
@@ -77,7 +101,7 @@ export default function AddMonitorForm({ onSuccess }: AddMonitorFormProps) {
 
   return (
     <form className="add-monitor-form" onSubmit={handleSubmit}>
-      <h3>添加新监控</h3>
+      <h3>{isEditMode ? '编辑监控' : '添加新监控'}</h3>
 
       <div className="form-row">
         <div className="form-group">
@@ -182,12 +206,21 @@ export default function AddMonitorForm({ onSuccess }: AddMonitorFormProps) {
       </div>
 
       <div className="form-actions">
+        {isEditMode && onCancel && (
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={onCancel}
+          >
+            取消
+          </button>
+        )}
         <button
           type="submit"
           className="btn-primary"
           disabled={isSubmitting}
         >
-          {isSubmitting ? '添加中...' : '添加监控'}
+          {isSubmitting ? (isEditMode ? '保存中...' : '添加中...') : (isEditMode ? '保存' : '添加监控')}
         </button>
       </div>
     </form>

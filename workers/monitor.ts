@@ -65,6 +65,11 @@ export default {
         return await deleteMonitor(id, env)
       }
 
+      if (path.startsWith('/api/monitors/') && request.method === 'PUT') {
+        const id = path.split('/')[3]
+        return await updateMonitor(id, request, env)
+      }
+
       if (path === '/api/checks' && request.method === 'GET') {
         const monitorId = url.searchParams.get('monitor_id')
         return await getChecks(monitorId, env)
@@ -369,6 +374,43 @@ async function createMonitor(request: Request, env: Env): Promise<Response> {
 async function deleteMonitor(id: string, env: Env): Promise<Response> {
   await env.DB.prepare('DELETE FROM monitors WHERE id = ?').bind(id).run()
   return jsonResponse({ success: true })
+}
+
+async function updateMonitor(id: string, request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as any
+
+  await env.DB.prepare(
+    `UPDATE monitors SET
+      name = ?,
+      url = ?,
+      check_interval = ?,
+      webhook_url = ?,
+      webhook_content_type = ?,
+      webhook_headers = ?,
+      webhook_body = ?,
+      webhook_username = ?,
+      is_active = ?,
+      updated_at = ?
+    WHERE id = ?`
+  ).bind(
+    body.name,
+    body.url,
+    body.check_interval || 5,
+    body.webhook_url || null,
+    body.webhook_content_type || 'application/json',
+    body.webhook_headers ? JSON.stringify(body.webhook_headers) : null,
+    body.webhook_body ? JSON.stringify(body.webhook_body) : null,
+    body.webhook_username || null,
+    body.is_active !== undefined ? body.is_active : 1,
+    new Date().toISOString(),
+    id
+  ).run()
+
+  const monitor = await env.DB.prepare(
+    'SELECT * FROM monitors WHERE id = ?'
+  ).bind(id).first()
+
+  return jsonResponse(monitor)
 }
 
 async function getChecks(monitorId: string | null, env: Env): Promise<Response> {

@@ -18,6 +18,7 @@ function App() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [authenticated, setAuthenticated] = useState(false)
   const [showChangePassword, setShowChangePassword] = useState(false)
+  const [editingMonitor, setEditingMonitor] = useState<Monitor | null>(null)
 
   useEffect(() => {
     if (isAuthenticated()) {
@@ -86,6 +87,16 @@ function App() {
     }
   }
 
+  function handleEdit(monitor: Monitor) {
+    setEditingMonitor(monitor)
+    setShowAddForm(true)
+  }
+
+  function handleCancelEdit() {
+    setEditingMonitor(null)
+    setShowAddForm(false)
+  }
+
   if (loading) {
     return (
       <div className="loading">
@@ -121,7 +132,13 @@ function App() {
         <div className="controls">
           <button
             className="btn-primary"
-            onClick={() => setShowAddForm(!showAddForm)}
+            onClick={() => {
+              if (showAddForm) {
+                handleCancelEdit()
+              } else {
+                setShowAddForm(true)
+              }
+            }}
           >
             {showAddForm ? '取消' : '+ 添加监控'}
           </button>
@@ -129,10 +146,12 @@ function App() {
 
         {showAddForm && (
           <AddMonitorForm
+            editMonitor={editingMonitor}
             onSuccess={() => {
-              setShowAddForm(false)
+              handleCancelEdit()
               loadMonitors()
             }}
+            onCancel={handleCancelEdit}
           />
         )}
 
@@ -148,6 +167,7 @@ function App() {
                 key={monitor.id}
                 monitor={monitor}
                 onUpdate={loadMonitors}
+                onEdit={() => handleEdit(monitor)}
               />
             ))}
           </div>
@@ -155,7 +175,7 @@ function App() {
       </main>
 
       <footer className="footer">
-        <p>纯 Cloudflare 技术栈 | D1 + Workers + KV + Pages</p>
+        <p>纯 Cloudflare 技术栈 | D1 + Workers + KV</p>
       </footer>
 
       {showChangePassword && (

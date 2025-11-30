@@ -83,6 +83,23 @@ export async function deleteMonitor(id: string): Promise<void> {
   })
 }
 
+export async function updateMonitor(id: string, monitor: {
+  name: string
+  url: string
+  check_interval?: number
+  webhook_url?: string
+  webhook_content_type?: string
+  webhook_headers?: Record<string, string>
+  webhook_body?: Record<string, any>
+  webhook_username?: string
+  is_active?: number
+}): Promise<Monitor> {
+  return fetchAPI(`/api/monitors/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(monitor),
+  })
+}
+
 export async function getChecks(monitorId: string): Promise<MonitorCheck[]> {
   return fetchAPI(`/api/checks?monitor_id=${monitorId}`)
 }

@@ -4,14 +4,16 @@ import { Monitor, MonitorCheck, deleteMonitor, testWebhook } from '../lib/api'
 interface MonitorCardProps {
   monitor: Monitor & { latestCheck?: MonitorCheck; uptime?: number }
   onUpdate: () => void
+  onEdit: () => void
 }
 
-export default function MonitorCard({ monitor, onUpdate }: MonitorCardProps) {
+export default function MonitorCard({ monitor, onUpdate, onEdit }: MonitorCardProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
 
   const status = monitor.latestCheck?.status || 'unknown'
   const statusColor = status === 'up' ? '#10b981' : status === 'down' ? '#ef4444' : '#6b7280'
+  const statusText = status === 'up' ? '正常' : status === 'down' ? '故障' : '未知'
 
   async function handleDelete() {
     if (!confirm(`确定要删除监控 "${monitor.name}" 吗？`)) return
@@ -26,10 +28,6 @@ export default function MonitorCard({ monitor, onUpdate }: MonitorCardProps) {
     } finally {
       setIsDeleting(false)
     }
-  }
-
-  async function handleToggle() {
-    alert('暂停/启用功能需要通过Workers API实现，当前版本暂不支持')
   }
 
   async function handleTestWebhook() {
@@ -59,15 +57,15 @@ export default function MonitorCard({ monitor, onUpdate }: MonitorCardProps) {
       <div className="monitor-header">
         <div className="monitor-status" style={{ backgroundColor: statusColor }}>
           <span className="status-dot"></span>
-          {status.toUpperCase()}
+          {statusText}
         </div>
         <div className="monitor-actions">
           <button
             className="btn-icon"
-            onClick={handleToggle}
-            title={monitor.is_active ? '暂停' : '启用'}
+            onClick={onEdit}
+            title="编辑"
           >
-            {monitor.is_active ? '⏸️' : '▶️'}
+            ✏️
           </button>
           <button
             className="btn-icon"
@@ -93,17 +91,23 @@ export default function MonitorCard({ monitor, onUpdate }: MonitorCardProps) {
       <div className="monitor-stats">
         <div className="stat">
           <span className="stat-label">可用率</span>
-          <span className="stat-value">{monitor.uptime?.toFixed(1)}%</span>
+          <span className="stat-value">{monitor.uptime?.toFixed(1) || 0}%</span>
         </div>
         <div className="stat">
           <span className="stat-label">响应时间</span>
-          <span className="stat-value">
+          <span className="stat-value" style={{
+            color: (monitor.latestCheck?.response_time || 0) > 1000 ? '#f59e0b' : 'inherit'
+          }}>
             {monitor.latestCheck?.response_time || 0}ms
           </span>
         </div>
         <div className="stat">
-          <span className="stat-label">检查间隔</span>
-          <span className="stat-value">{monitor.check_interval}分钟</span>
+          <span className="stat-label">状态码</span>
+          <span className="stat-value" style={{
+            color: monitor.latestCheck?.status_code && monitor.latestCheck.status_code >= 400 ? '#ef4444' : 'inherit'
+          }}>
+            {monitor.latestCheck?.status_code || '-'}
+          </span>
         </div>
       </div>
 
@@ -112,6 +116,12 @@ export default function MonitorCard({ monitor, onUpdate }: MonitorCardProps) {
           <span className="last-check">
             最后检查: {new Date(monitor.latestCheck.checked_at).toLocaleString('zh-CN')}
           </span>
+        </div>
+      )}
+
+      {monitor.latestCheck?.error_message && (
+        <div className="monitor-error">
+          错误: {monitor.latestCheck.error_message}
         </div>
       )}
 
