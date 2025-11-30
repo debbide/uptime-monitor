@@ -10,6 +10,7 @@ export interface Monitor {
   check_timeout: number
   expected_status_codes: string
   expected_keyword: string | null
+  forbidden_keyword: string | null
   webhook_url: string | null
   webhook_content_type: string
   webhook_headers: string | null
@@ -75,6 +76,7 @@ export async function createMonitor(monitor: {
   check_timeout?: number
   expected_status_codes?: string
   expected_keyword?: string
+  forbidden_keyword?: string
   webhook_url?: string
   webhook_content_type?: string
   webhook_headers?: Record<string, string>
@@ -102,6 +104,7 @@ export async function updateMonitor(id: string, monitor: {
   check_timeout?: number
   expected_status_codes?: string
   expected_keyword?: string
+  forbidden_keyword?: string
   webhook_url?: string
   webhook_content_type?: string
   webhook_headers?: Record<string, string>

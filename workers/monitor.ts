@@ -15,6 +15,7 @@ interface Monitor {
   check_timeout: number
   expected_status_codes: string
   expected_keyword: string | null
+  forbidden_keyword: string | null
   webhook_url: string | null
   webhook_content_type: string
   webhook_headers: string | null
@@ -170,8 +171,17 @@ async function checkMonitor(monitor: Monitor, env: Env) {
           .map(c => parseInt(c.trim()))
 
         if (expectedCodes.includes(statusCode)) {
-          // 检查关键词
-          if (monitor.expected_keyword && monitor.expected_keyword.trim()) {
+          // 先检查禁止关键词（如果找到则判定为故障）
+          if (monitor.forbidden_keyword && monitor.forbidden_keyword.trim()) {
+            if (result.body && result.body.includes(monitor.forbidden_keyword)) {
+              errorMessage = `检测到禁止关键词 "${monitor.forbidden_keyword}"`
+              status = 'down'
+            } else {
+              status = 'up'
+            }
+          }
+          // 再检查期望关键词（如果设置了禁止关键词且已判定为down，跳过此检查）
+          else if (monitor.expected_keyword && monitor.expected_keyword.trim()) {
             if (result.body && result.body.includes(monitor.expected_keyword)) {
               status = 'up'
             } else {
@@ -238,8 +248,9 @@ async function checkHTTP(monitor: Monitor, timeout: number): Promise<{
     clearTimeout(timeoutId)
 
     let body = ''
-    // 只有需要检查关键词时才读取 body
-    if (monitor.expected_keyword && method !== 'HEAD') {
+    // 需要检查关键词时才读取 body（期望关键词或禁止关键词）
+    const needBody = (monitor.expected_keyword || monitor.forbidden_keyword) && method !== 'HEAD'
+    if (needBody) {
       try {
         body = await response.text()
       } catch {
@@ -469,8 +480,8 @@ async function createMonitor(request: Request, env: Env): Promise<Response> {
   const id = crypto.randomUUID()
 
   await env.DB.prepare(
-    `INSERT INTO monitors (id, name, url, check_interval, check_type, check_method, check_timeout, expected_status_codes, expected_keyword, webhook_url, webhook_content_type, webhook_headers, webhook_body, webhook_username, is_active)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`
+    `INSERT INTO monitors (id, name, url, check_interval, check_type, check_method, check_timeout, expected_status_codes, expected_keyword, forbidden_keyword, webhook_url, webhook_content_type, webhook_headers, webhook_body, webhook_username, is_active)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`
   ).bind(
     id,
     body.name,
@@ -481,6 +492,7 @@ async function createMonitor(request: Request, env: Env): Promise<Response> {
     body.check_timeout || 30,
     body.expected_status_codes || '200,201,204,301,302',
     body.expected_keyword || null,
+    body.forbidden_keyword || null,
     body.webhook_url || null,
     body.webhook_content_type || 'application/json',
     body.webhook_headers ? JSON.stringify(body.webhook_headers) : null,
@@ -518,6 +530,7 @@ async function updateMonitor(id: string, request: Request, env: Env): Promise<Re
       check_timeout = ?,
       expected_status_codes = ?,
       expected_keyword = ?,
+      forbidden_keyword = ?,
       webhook_url = ?,
       webhook_content_type = ?,
       webhook_headers = ?,
@@ -535,6 +548,7 @@ async function updateMonitor(id: string, request: Request, env: Env): Promise<Re
     body.check_timeout || 30,
     body.expected_status_codes || '200,201,204,301,302',
     body.expected_keyword || null,
+    body.forbidden_keyword || null,
     body.webhook_url || null,
     body.webhook_content_type || 'application/json',
     body.webhook_headers ? JSON.stringify(body.webhook_headers) : null,

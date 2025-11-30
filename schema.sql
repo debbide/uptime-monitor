@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS monitors (
   check_timeout INTEGER NOT NULL DEFAULT 30,
   expected_status_codes TEXT DEFAULT '200,201,204,301,302',
   expected_keyword TEXT,
+  forbidden_keyword TEXT,
   webhook_url TEXT,
   webhook_content_type TEXT DEFAULT 'application/json',
   webhook_headers TEXT,

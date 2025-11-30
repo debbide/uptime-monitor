@@ -16,6 +16,7 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
   const [checkTimeout, setCheckTimeout] = useState(30)
   const [expectedStatusCodes, setExpectedStatusCodes] = useState('200,201,204,301,302')
   const [expectedKeyword, setExpectedKeyword] = useState('')
+  const [forbiddenKeyword, setForbiddenKeyword] = useState('')
   const [webhookUrl, setWebhookUrl] = useState('')
   const [contentType, setContentType] = useState('application/json')
   const [headers, setHeaders] = useState('')
@@ -35,6 +36,7 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
       setCheckTimeout(editMonitor.check_timeout || 30)
       setExpectedStatusCodes(editMonitor.expected_status_codes || '200,201,204,301,302')
       setExpectedKeyword(editMonitor.expected_keyword || '')
+      setForbiddenKeyword(editMonitor.forbidden_keyword || '')
       setWebhookUrl(editMonitor.webhook_url || '')
       setContentType(editMonitor.webhook_content_type || 'application/json')
       setHeaders(editMonitor.webhook_headers || '')
@@ -83,6 +85,7 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
         check_timeout: checkTimeout,
         expected_status_codes: expectedStatusCodes.trim() || '200,201,204,301,302',
         expected_keyword: expectedKeyword.trim() || undefined,
+        forbidden_keyword: forbiddenKeyword.trim() || undefined,
         webhook_url: webhookUrl.trim() || undefined,
         webhook_content_type: contentType,
         webhook_headers: Object.keys(parsedHeaders).length > 0 ? parsedHeaders : undefined,
@@ -115,6 +118,7 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
     setCheckTimeout(30)
     setExpectedStatusCodes('200,201,204,301,302')
     setExpectedKeyword('')
+    setForbiddenKeyword('')
     setWebhookUrl('')
     setContentType('application/json')
     setHeaders('')
@@ -234,6 +238,18 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
                 placeholder="例如: success 或 OK"
               />
               <span className="form-hint">响应内容必须包含此关键词才视为正常</span>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="forbiddenKeyword">禁止关键词（可选）</label>
+              <input
+                id="forbiddenKeyword"
+                type="text"
+                value={forbiddenKeyword}
+                onChange={(e) => setForbiddenKeyword(e.target.value)}
+                placeholder="例如: 离线 或 offline"
+              />
+              <span className="form-hint">响应内容包含此关键词则判定为故障（用于监控探针页面）</span>
             </div>
           </>
         )}
