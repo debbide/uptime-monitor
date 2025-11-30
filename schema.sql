@@ -9,8 +9,8 @@ CREATE TABLE IF NOT EXISTS admin_credentials (
 );
 
 -- 插入默认管理员密码 (admin123 的 SHA-256 hash)
-INSERT INTO admin_credentials (password_hash)
-VALUES ('JAvlGPq9JyTdtvBO6x2llnRI1+gxwIyPqCKAn3THIKk=');
+INSERT OR IGNORE INTO admin_credentials (id, password_hash)
+VALUES (1, 'JAvlGPq9JyTdtvBO6x2llnRI1+gxwIyPqCKAn3THIKk=');
 
 -- 监控配置表
 CREATE TABLE IF NOT EXISTS monitors (

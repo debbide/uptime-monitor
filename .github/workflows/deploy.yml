@@ -38,15 +38,6 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: d1 execute website-monitor --file=./schema.sql --remote
-        continue-on-error: true
-
-      - name: Fix admin password
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: d1 execute website-monitor --file=./fix-password.sql --remote
-        continue-on-error: true
 
       - name: Setup KV Namespace
         uses: cloudflare/wrangler-action@v3
