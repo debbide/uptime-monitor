@@ -115,6 +115,13 @@ export async function testWebhook(monitorId: string): Promise<{ success: boolean
   })
 }
 
+export async function checkNow(monitorId: string): Promise<{ success: boolean; check: MonitorCheck }> {
+  return fetchAPI('/api/check-now', {
+    method: 'POST',
+    body: JSON.stringify({ monitor_id: monitorId }),
+  })
+}
+
 export async function verifyPassword(password: string): Promise<boolean> {
   try {
     const result = await fetchAPI('/api/auth/verify', {

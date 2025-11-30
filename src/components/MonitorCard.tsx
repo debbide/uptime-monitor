@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Monitor, MonitorCheck, deleteMonitor, testWebhook } from '../lib/api'
+import { Monitor, MonitorCheck, deleteMonitor, testWebhook, checkNow } from '../lib/api'
 
 interface MonitorCardProps {
   monitor: Monitor & { latestCheck?: MonitorCheck; uptime?: number }
@@ -10,6 +10,7 @@ interface MonitorCardProps {
 export default function MonitorCard({ monitor, onUpdate, onEdit }: MonitorCardProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [isTesting, setIsTesting] = useState(false)
+  const [isChecking, setIsChecking] = useState(false)
 
   const status = monitor.latestCheck?.status || 'unknown'
   const statusColor = status === 'up' ? '#10b981' : status === 'down' ? '#ef4444' : '#6b7280'
@@ -52,6 +53,18 @@ export default function MonitorCard({ monitor, onUpdate, onEdit }: MonitorCardPr
     }
   }
 
+  async function handleCheckNow() {
+    setIsChecking(true)
+    try {
+      await checkNow(monitor.id)
+      onUpdate()
+    } catch (err: any) {
+      alert(`检查失败: ${err.message || '请稍后重试'}`)
+    } finally {
+      setIsChecking(false)
+    }
+  }
+
   return (
     <div className="monitor-card">
       <div className="monitor-header">
@@ -60,6 +73,14 @@ export default function MonitorCard({ monitor, onUpdate, onEdit }: MonitorCardPr
           {statusText}
         </div>
         <div className="monitor-actions">
+          <button
+            className="btn-icon"
+            onClick={handleCheckNow}
+            disabled={isChecking}
+            title="立即检查"
+          >
+            {isChecking ? '⏳' : '🔄'}
+          </button>
           <button
             className="btn-icon"
             onClick={onEdit}

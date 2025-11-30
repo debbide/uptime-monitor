@@ -87,6 +87,10 @@ export default {
         return await testWebhook(request, env)
       }
 
+      if (path === '/api/check-now' && request.method === 'POST') {
+        return await checkNow(request, env)
+      }
+
       if (path === '/api/auth/verify' && request.method === 'POST') {
         return await verifyPassword(request, env)
       }
@@ -366,7 +370,12 @@ async function createMonitor(request: Request, env: Env): Promise<Response> {
 
   const monitor = await env.DB.prepare(
     'SELECT * FROM monitors WHERE id = ?'
-  ).bind(id).first()
+  ).bind(id).first() as Monitor
+
+  // 创建后立即检查一次
+  if (monitor) {
+    await checkMonitor(monitor, env)
+  }
 
   return jsonResponse(monitor, 201)
 }
@@ -478,6 +487,28 @@ async function testWebhook(request: Request, env: Env): Promise<Response> {
   } catch (error: any) {
     return jsonResponse({ error: error.message }, 500)
   }
+}
+
+async function checkNow(request: Request, env: Env): Promise<Response> {
+  const body = await request.json() as any
+  const { monitor_id } = body
+
+  const monitor = await env.DB.prepare(
+    'SELECT * FROM monitors WHERE id = ?'
+  ).bind(monitor_id).first() as Monitor
+
+  if (!monitor) {
+    return jsonResponse({ error: 'Monitor not found' }, 404)
+  }
+
+  await checkMonitor(monitor, env)
+
+  // 获取最新检查结果
+  const latestCheck = await env.DB.prepare(
+    'SELECT * FROM monitor_checks WHERE monitor_id = ? ORDER BY checked_at DESC LIMIT 1'
+  ).bind(monitor_id).first()
+
+  return jsonResponse({ success: true, check: latestCheck })
 }
 
 async function verifyPassword(request: Request, env: Env): Promise<Response> {
