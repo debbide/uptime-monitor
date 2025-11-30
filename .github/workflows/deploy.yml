@@ -9,7 +9,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    name: Deploy Worker and Pages
+    name: Deploy Worker
 
     steps:
       - name: Checkout code
@@ -65,6 +65,9 @@ jobs:
           [triggers]
           crons = ["*/5 * * * *"]
 
+          [site]
+          bucket = "./dist"
+
           [[kv_namespaces]]
           binding = "MONITOR_KV"
           id = "${{ secrets.KV_NAMESPACE_ID }}"
@@ -89,10 +92,3 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
-
-      - name: Deploy to Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=website-monitor

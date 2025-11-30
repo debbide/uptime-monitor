@@ -2,6 +2,7 @@ interface Env {
   DB: D1Database
   MONITOR_KV: KVNamespace
   ADMIN_PASSWORD_HASH: string
+  ASSETS: Fetcher
 }
 
 interface Monitor {
@@ -89,7 +90,7 @@ export default {
         return await changePassword(request, env)
       }
 
-      return jsonResponse({ error: 'Not found' }, 404)
+      return env.ASSETS.fetch(request)
     } catch (error: any) {
       console.error('Error:', error)
       return jsonResponse({ error: error.message }, 500)

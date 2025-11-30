@@ -1,6 +1,6 @@
 # GitHub Actions 自动部署指南
 
-使用 GitHub Actions 全自动部署到 Cloudflare，所有配置通过 GitHub Secrets 管理。
+使用 GitHub Actions 全自动部署到 Cloudflare Workers，所有配置通过 GitHub Secrets 管理。
 
 ## 一次性配置步骤（2 步完成）
 
@@ -17,7 +17,6 @@
    - Account → D1 → Edit
    - Account → Workers Scripts → Edit
    - Account → Workers KV Storage → Edit
-   - Account → Cloudflare Pages → Edit
 7. 点击 **Continue to summary** → **Create Token**
 8. **复制并保存** Token（只显示一次）
 
@@ -95,8 +94,7 @@
 3. 检查并创建 KV 命名空间（如不存在）
 4. 从 GitHub Secrets 动态生成 `wrangler.toml`
 5. 构建前端
-6. 部署 Worker
-7. 部署到 Pages
+6. 部署 Worker（包含静态文件）
 
 查看部署状态：
 - GitHub 仓库 → **Actions** 标签
@@ -134,7 +132,7 @@
 2. **Apply Database Schema**: 执行数据库迁移脚本
 3. **Setup KV Namespace**: 尝试创建 KV 命名空间（如已存在则跳过）
 4. **Generate wrangler.toml**: 从 GitHub Secrets 动态生成配置文件
-5. **Build & Deploy**: 构建前端并部署 Worker 和 Pages
+5. **Build & Deploy**: 构建前端并部署 Worker（包含静态文件）
 
 所有资源创建步骤都使用 `continue-on-error: true`，确保即使资源已存在也不会中断部署流程。
 
@@ -173,15 +171,11 @@
 
 ### Q: 如何查看部署后的网站？
 
-**Pages URL**:
-1. Cloudflare Dashboard → **Workers & Pages**
-2. 找到 `website-monitor` Pages 项目
-3. 点击进入，查看部署的 URL
-
 **Worker URL**:
 1. Cloudflare Dashboard → **Workers & Pages**
 2. 找到 `website-monitor` Worker
 3. 点击进入，在 **Triggers** 标签查看 URL
+4. 访问该 URL 即可打开监控系统前端界面
 
 ### Q: 需要更新数据库表结构？
 
