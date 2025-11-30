@@ -62,6 +62,12 @@ jobs:
           main = "workers/monitor.ts"
           compatibility_date = "2024-01-01"
 
+          [build]
+          command = ""
+
+          [build.upload]
+          format = "service-worker"
+
           [triggers]
           crons = ["*/5 * * * *"]
 

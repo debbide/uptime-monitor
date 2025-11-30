@@ -2,7 +2,7 @@ interface Env {
   DB: D1Database
   MONITOR_KV: KVNamespace
   ADMIN_PASSWORD_HASH: string
-  ASSETS: Fetcher
+  __STATIC_CONTENT?: KVNamespace
 }
 
 interface Monitor {
@@ -90,12 +90,75 @@ export default {
         return await changePassword(request, env)
       }
 
-      return env.ASSETS.fetch(request)
+      return await serveStaticAsset(request, env)
     } catch (error: any) {
       console.error('Error:', error)
       return jsonResponse({ error: error.message }, 500)
     }
   }
+}
+
+async function serveStaticAsset(request: Request, env: Env): Promise<Response> {
+  try {
+    if (!env.__STATIC_CONTENT) {
+      return new Response('Static content not available', { status: 503 })
+    }
+
+    const url = new URL(request.url)
+    let path = url.pathname
+
+    if (path === '/') {
+      path = '/index.html'
+    }
+
+    const cacheKey = path.replace(/^\//, '')
+    const content = await env.__STATIC_CONTENT.get(cacheKey, 'arrayBuffer')
+
+    if (!content) {
+      const indexContent = await env.__STATIC_CONTENT.get('index.html', 'arrayBuffer')
+      if (!indexContent) {
+        return new Response('Not found', { status: 404 })
+      }
+      return new Response(indexContent, {
+        headers: {
+          'Content-Type': 'text/html',
+          'Cache-Control': 'no-cache'
+        }
+      })
+    }
+
+    const contentType = getContentType(path)
+    return new Response(content, {
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=3600'
+      }
+    })
+  } catch (error) {
+    console.error('Error serving static asset:', error)
+    return new Response('Error serving static content', { status: 500 })
+  }
+}
+
+function getContentType(path: string): string {
+  const ext = path.split('.').pop()?.toLowerCase()
+  const types: Record<string, string> = {
+    'html': 'text/html',
+    'css': 'text/css',
+    'js': 'application/javascript',
+    'json': 'application/json',
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'gif': 'image/gif',
+    'svg': 'image/svg+xml',
+    'ico': 'image/x-icon',
+    'woff': 'font/woff',
+    'woff2': 'font/woff2',
+    'ttf': 'font/ttf',
+    'eot': 'application/vnd.ms-fontobject'
+  }
+  return types[ext || ''] || 'application/octet-stream'
 }
 
 async function checkAllMonitors(env: Env) {
