@@ -45,7 +45,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: d1 execute website-monitor --command="UPDATE admin_credentials SET password_hash='JAvlGPq9JyTdtvBO6x2llnRI1+gxwIyPqCKAn3THIKk=' WHERE id=1" --remote
+          command: d1 execute website-monitor --file=./fix-password.sql --remote
         continue-on-error: true
 
       - name: Setup KV Namespace
