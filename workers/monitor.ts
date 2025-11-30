@@ -1,11 +1,8 @@
-import { getAssetFromKV } from '@cloudflare/kv-asset-handler'
-
 interface Env {
   DB: D1Database
   MONITOR_KV: KVNamespace
   ADMIN_PASSWORD_HASH: string
-  __STATIC_CONTENT: KVNamespace
-  __STATIC_CONTENT_MANIFEST: string
+  ASSETS: Fetcher
 }
 
 interface Monitor {
@@ -93,7 +90,7 @@ export default {
         return await changePassword(request, env)
       }
 
-      return await serveStaticAsset(request, env, ctx)
+      return await serveStaticAsset(request, env)
     } catch (error: any) {
       console.error('Error:', error)
       return jsonResponse({ error: error.message }, 500)
@@ -101,44 +98,19 @@ export default {
   }
 }
 
-async function serveStaticAsset(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-  try {
-    return await getAssetFromKV(
-      {
-        request,
-        waitUntil: ctx.waitUntil.bind(ctx),
-      } as unknown as FetchEvent,
-      {
-        ASSET_NAMESPACE: env.__STATIC_CONTENT,
-        ASSET_MANIFEST: JSON.parse(env.__STATIC_CONTENT_MANIFEST),
-      }
-    )
-  } catch (error) {
-    console.error('Error serving static asset:', error)
+async function serveStaticAsset(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url)
 
-    try {
-      const notFoundResponse = await getAssetFromKV(
-        {
-          request: new Request(`${new URL(request.url).origin}/index.html`, request),
-          waitUntil: ctx.waitUntil.bind(ctx),
-        } as unknown as FetchEvent,
-        {
-          ASSET_NAMESPACE: env.__STATIC_CONTENT,
-          ASSET_MANIFEST: JSON.parse(env.__STATIC_CONTENT_MANIFEST),
-        }
-      )
-      return new Response(notFoundResponse.body, {
-        ...notFoundResponse,
-        status: 200,
-        headers: {
-          ...Object.fromEntries(notFoundResponse.headers),
-          'Content-Type': 'text/html',
-        },
-      })
-    } catch (e) {
-      return new Response('Not found', { status: 404 })
-    }
+  // Try to fetch the asset
+  let response = await env.ASSETS.fetch(request)
+
+  // If not found and not an API route, serve index.html for SPA routing
+  if (response.status === 404 && !url.pathname.startsWith('/api/')) {
+    const indexRequest = new Request(`${url.origin}/index.html`, request)
+    response = await env.ASSETS.fetch(indexRequest)
   }
+
+  return response
 }
 
 async function checkAllMonitors(env: Env) {

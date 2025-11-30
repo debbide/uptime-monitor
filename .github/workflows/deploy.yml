@@ -62,12 +62,10 @@ jobs:
           main = "workers/monitor.ts"
           compatibility_date = "2024-01-01"
           compatibility_flags = ["nodejs_compat"]
+          assets = { directory = "./dist", binding = "ASSETS" }
 
           [triggers]
           crons = ["*/5 * * * *"]
-
-          [site]
-          bucket = "./dist"
 
           [[kv_namespaces]]
           binding = "MONITOR_KV"
