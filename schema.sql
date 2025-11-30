@@ -62,9 +62,3 @@ CREATE INDEX IF NOT EXISTS idx_monitor_checks_checked_at ON monitor_checks(check
 CREATE INDEX IF NOT EXISTS idx_incidents_monitor_id ON incidents(monitor_id);
 CREATE INDEX IF NOT EXISTS idx_incidents_unresolved ON incidents(monitor_id, resolved_at) WHERE resolved_at IS NULL;
 
--- 为现有表添加新字段（兼容升级）
-ALTER TABLE monitors ADD COLUMN check_type TEXT DEFAULT 'http';
-ALTER TABLE monitors ADD COLUMN check_method TEXT DEFAULT 'GET';
-ALTER TABLE monitors ADD COLUMN check_timeout INTEGER DEFAULT 30;
-ALTER TABLE monitors ADD COLUMN expected_status_codes TEXT DEFAULT '200,201,204,301,302';
-ALTER TABLE monitors ADD COLUMN expected_keyword TEXT;
