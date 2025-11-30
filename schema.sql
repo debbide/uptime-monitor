@@ -18,6 +18,11 @@ CREATE TABLE IF NOT EXISTS monitors (
   name TEXT NOT NULL,
   url TEXT NOT NULL,
   check_interval INTEGER NOT NULL DEFAULT 5,
+  check_type TEXT NOT NULL DEFAULT 'http',
+  check_method TEXT NOT NULL DEFAULT 'GET',
+  check_timeout INTEGER NOT NULL DEFAULT 30,
+  expected_status_codes TEXT DEFAULT '200,201,204,301,302',
+  expected_keyword TEXT,
   webhook_url TEXT,
   webhook_content_type TEXT DEFAULT 'application/json',
   webhook_headers TEXT,
@@ -56,3 +61,10 @@ CREATE INDEX IF NOT EXISTS idx_monitor_checks_monitor_id ON monitor_checks(monit
 CREATE INDEX IF NOT EXISTS idx_monitor_checks_checked_at ON monitor_checks(checked_at DESC);
 CREATE INDEX IF NOT EXISTS idx_incidents_monitor_id ON incidents(monitor_id);
 CREATE INDEX IF NOT EXISTS idx_incidents_unresolved ON incidents(monitor_id, resolved_at) WHERE resolved_at IS NULL;
+
+-- 为现有表添加新字段（兼容升级）
+ALTER TABLE monitors ADD COLUMN check_type TEXT DEFAULT 'http';
+ALTER TABLE monitors ADD COLUMN check_method TEXT DEFAULT 'GET';
+ALTER TABLE monitors ADD COLUMN check_timeout INTEGER DEFAULT 30;
+ALTER TABLE monitors ADD COLUMN expected_status_codes TEXT DEFAULT '200,201,204,301,302';
+ALTER TABLE monitors ADD COLUMN expected_keyword TEXT;

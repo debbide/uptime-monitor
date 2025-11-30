@@ -5,6 +5,11 @@ export interface Monitor {
   name: string
   url: string
   check_interval: number
+  check_type: 'http' | 'tcp'
+  check_method: 'GET' | 'HEAD' | 'POST'
+  check_timeout: number
+  expected_status_codes: string
+  expected_keyword: string | null
   webhook_url: string | null
   webhook_content_type: string
   webhook_headers: string | null
@@ -65,6 +70,11 @@ export async function createMonitor(monitor: {
   name: string
   url: string
   check_interval?: number
+  check_type?: 'http' | 'tcp'
+  check_method?: 'GET' | 'HEAD' | 'POST'
+  check_timeout?: number
+  expected_status_codes?: string
+  expected_keyword?: string
   webhook_url?: string
   webhook_content_type?: string
   webhook_headers?: Record<string, string>
@@ -87,6 +97,11 @@ export async function updateMonitor(id: string, monitor: {
   name: string
   url: string
   check_interval?: number
+  check_type?: 'http' | 'tcp'
+  check_method?: 'GET' | 'HEAD' | 'POST'
+  check_timeout?: number
+  expected_status_codes?: string
+  expected_keyword?: string
   webhook_url?: string
   webhook_content_type?: string
   webhook_headers?: Record<string, string>

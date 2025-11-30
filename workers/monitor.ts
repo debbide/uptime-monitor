@@ -10,6 +10,11 @@ interface Monitor {
   name: string
   url: string
   check_interval: number
+  check_type: 'http' | 'tcp'
+  check_method: 'GET' | 'HEAD' | 'POST'
+  check_timeout: number
+  expected_status_codes: string
+  expected_keyword: string | null
   webhook_url: string | null
   webhook_content_type: string
   webhook_headers: string | null
@@ -144,23 +149,43 @@ async function checkMonitor(monitor: Monitor, env: Env) {
   let statusCode = 0
   let errorMessage = ''
 
+  const timeout = (monitor.check_timeout || 30) * 1000
+  const checkType = monitor.check_type || 'http'
+
   try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 30000)
-
-    const response = await fetch(monitor.url, {
-      method: 'GET',
-      signal: controller.signal,
-      redirect: 'follow'
-    })
-
-    clearTimeout(timeoutId)
-    statusCode = response.status
-
-    if (response.ok) {
-      status = 'up'
+    if (checkType === 'tcp') {
+      // TCP 检测（模拟 ping）- 通过 HTTP 连接测试端口可达性
+      const result = await checkTCP(monitor.url, timeout)
+      status = result.success ? 'up' : 'down'
+      errorMessage = result.error || ''
     } else {
-      errorMessage = `HTTP ${statusCode}`
+      // HTTP 检测
+      const result = await checkHTTP(monitor, timeout)
+      statusCode = result.statusCode
+
+      if (result.success) {
+        // 检查状态码
+        const expectedCodes = (monitor.expected_status_codes || '200,201,204,301,302')
+          .split(',')
+          .map(c => parseInt(c.trim()))
+
+        if (expectedCodes.includes(statusCode)) {
+          // 检查关键词
+          if (monitor.expected_keyword && monitor.expected_keyword.trim()) {
+            if (result.body && result.body.includes(monitor.expected_keyword)) {
+              status = 'up'
+            } else {
+              errorMessage = `关键词 "${monitor.expected_keyword}" 未找到`
+            }
+          } else {
+            status = 'up'
+          }
+        } else {
+          errorMessage = `状态码 ${statusCode} 不在期望列表中`
+        }
+      } else {
+        errorMessage = result.error || `HTTP ${statusCode}`
+      }
     }
   } catch (error: any) {
     errorMessage = error.message || 'Request failed'
@@ -186,6 +211,96 @@ async function checkMonitor(monitor: Monitor, env: Env) {
     await handleDownStatus(monitor, checkData, env)
   } else {
     await handleUpStatus(monitor, checkData, env)
+  }
+}
+
+async function checkHTTP(monitor: Monitor, timeout: number): Promise<{
+  success: boolean
+  statusCode: number
+  body?: string
+  error?: string
+}> {
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+    const method = monitor.check_method || 'GET'
+
+    const response = await fetch(monitor.url, {
+      method,
+      signal: controller.signal,
+      redirect: 'follow',
+      headers: {
+        'User-Agent': 'UptimeMonitor/1.0'
+      }
+    })
+
+    clearTimeout(timeoutId)
+
+    let body = ''
+    // 只有需要检查关键词时才读取 body
+    if (monitor.expected_keyword && method !== 'HEAD') {
+      try {
+        body = await response.text()
+      } catch {
+        body = ''
+      }
+    }
+
+    return {
+      success: true,
+      statusCode: response.status,
+      body
+    }
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      return { success: false, statusCode: 0, error: `超时 (${timeout/1000}秒)` }
+    }
+    return { success: false, statusCode: 0, error: error.message }
+  }
+}
+
+async function checkTCP(url: string, timeout: number): Promise<{
+  success: boolean
+  error?: string
+}> {
+  try {
+    // 解析 URL 获取主机和端口
+    let targetUrl = url
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      targetUrl = `https://${url}`
+    }
+
+    const parsedUrl = new URL(targetUrl)
+    const port = parsedUrl.port || (parsedUrl.protocol === 'https:' ? '443' : '80')
+
+    // 使用 fetch 进行 TCP 连接测试
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+    // 尝试连接，只检查是否能建立连接
+    const testUrl = `${parsedUrl.protocol}//${parsedUrl.hostname}:${port}`
+
+    await fetch(testUrl, {
+      method: 'HEAD',
+      signal: controller.signal,
+      redirect: 'manual'
+    })
+
+    clearTimeout(timeoutId)
+    return { success: true }
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      return { success: false, error: `连接超时 (${timeout/1000}秒)` }
+    }
+    // 连接被拒绝等错误表示端口不可达
+    if (error.message.includes('Failed to fetch') ||
+        error.message.includes('connection') ||
+        error.message.includes('ECONNREFUSED')) {
+      return { success: false, error: '连接失败' }
+    }
+    // 其他错误（如 SSL 错误）可能表示端口是开放的
+    return { success: true }
   }
 }
 
@@ -354,13 +469,18 @@ async function createMonitor(request: Request, env: Env): Promise<Response> {
   const id = crypto.randomUUID()
 
   await env.DB.prepare(
-    `INSERT INTO monitors (id, name, url, check_interval, webhook_url, webhook_content_type, webhook_headers, webhook_body, webhook_username, is_active)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`
+    `INSERT INTO monitors (id, name, url, check_interval, check_type, check_method, check_timeout, expected_status_codes, expected_keyword, webhook_url, webhook_content_type, webhook_headers, webhook_body, webhook_username, is_active)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`
   ).bind(
     id,
     body.name,
     body.url,
     body.check_interval || 5,
+    body.check_type || 'http',
+    body.check_method || 'GET',
+    body.check_timeout || 30,
+    body.expected_status_codes || '200,201,204,301,302',
+    body.expected_keyword || null,
     body.webhook_url || null,
     body.webhook_content_type || 'application/json',
     body.webhook_headers ? JSON.stringify(body.webhook_headers) : null,
@@ -393,6 +513,11 @@ async function updateMonitor(id: string, request: Request, env: Env): Promise<Re
       name = ?,
       url = ?,
       check_interval = ?,
+      check_type = ?,
+      check_method = ?,
+      check_timeout = ?,
+      expected_status_codes = ?,
+      expected_keyword = ?,
       webhook_url = ?,
       webhook_content_type = ?,
       webhook_headers = ?,
@@ -405,6 +530,11 @@ async function updateMonitor(id: string, request: Request, env: Env): Promise<Re
     body.name,
     body.url,
     body.check_interval || 5,
+    body.check_type || 'http',
+    body.check_method || 'GET',
+    body.check_timeout || 30,
+    body.expected_status_codes || '200,201,204,301,302',
+    body.expected_keyword || null,
     body.webhook_url || null,
     body.webhook_content_type || 'application/json',
     body.webhook_headers ? JSON.stringify(body.webhook_headers) : null,
