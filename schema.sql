@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS monitors (
   expected_status_codes TEXT DEFAULT '200,201,204,301,302',
   expected_keyword TEXT,
   forbidden_keyword TEXT,
+  komari_offline_threshold INTEGER DEFAULT 3,
   webhook_url TEXT,
   webhook_content_type TEXT DEFAULT 'application/json',
   webhook_headers TEXT,
@@ -62,4 +63,8 @@ CREATE INDEX IF NOT EXISTS idx_monitor_checks_monitor_id ON monitor_checks(monit
 CREATE INDEX IF NOT EXISTS idx_monitor_checks_checked_at ON monitor_checks(checked_at DESC);
 CREATE INDEX IF NOT EXISTS idx_incidents_monitor_id ON incidents(monitor_id);
 CREATE INDEX IF NOT EXISTS idx_incidents_unresolved ON incidents(monitor_id, resolved_at) WHERE resolved_at IS NULL;
+
+-- 迁移脚本：为现有表添加 komari_offline_threshold 字段
+-- 如果字段不存在，执行以下 SQL（在 D1 控制台中手动执行）
+-- ALTER TABLE monitors ADD COLUMN komari_offline_threshold INTEGER DEFAULT 3;
 

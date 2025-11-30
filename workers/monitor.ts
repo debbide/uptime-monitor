@@ -10,18 +10,32 @@ interface Monitor {
   name: string
   url: string
   check_interval: number
-  check_type: 'http' | 'tcp'
+  check_type: 'http' | 'tcp' | 'komari'
   check_method: 'GET' | 'HEAD' | 'POST'
   check_timeout: number
   expected_status_codes: string
   expected_keyword: string | null
   forbidden_keyword: string | null
+  komari_offline_threshold: number
   webhook_url: string | null
   webhook_content_type: string
   webhook_headers: string | null
   webhook_body: string | null
   webhook_username: string | null
   is_active: number
+}
+
+interface KomariServer {
+  uuid: string
+  name: string
+  region: string
+  updated_at: string
+}
+
+interface KomariApiResponse {
+  status: string
+  message: string
+  data: KomariServer[]
 }
 
 interface MonitorCheck {
@@ -159,6 +173,12 @@ async function checkMonitor(monitor: Monitor, env: Env) {
       const result = await checkTCP(monitor.url, timeout)
       status = result.success ? 'up' : 'down'
       errorMessage = result.error || ''
+    } else if (checkType === 'komari') {
+      // Komari 面板 API 检测
+      const result = await checkKomari(monitor, timeout)
+      status = result.success ? 'up' : 'down'
+      errorMessage = result.error || ''
+      statusCode = result.statusCode
     } else {
       // HTTP 检测
       const result = await checkHTTP(monitor, timeout)
@@ -312,6 +332,91 @@ async function checkTCP(url: string, timeout: number): Promise<{
     }
     // 其他错误（如 SSL 错误）可能表示端口是开放的
     return { success: true }
+  }
+}
+
+async function checkKomari(monitor: Monitor, timeout: number): Promise<{
+  success: boolean
+  statusCode: number
+  error?: string
+}> {
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+    const response = await fetch(monitor.url, {
+      method: 'GET',
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'UptimeMonitor/1.0'
+      }
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      return {
+        success: false,
+        statusCode: response.status,
+        error: `Komari API 返回 ${response.status}`
+      }
+    }
+
+    const data = await response.json() as KomariApiResponse
+
+    if (data.status !== 'success') {
+      return {
+        success: false,
+        statusCode: response.status,
+        error: `Komari API 错误: ${data.message || '未知错误'}`
+      }
+    }
+
+    // 检查服务器离线状态
+    const offlineThreshold = (monitor.komari_offline_threshold || 3) * 60 * 1000 // 转换为毫秒
+    const now = Date.now()
+    const offlineServers: string[] = []
+
+    // 解析目标服务器列表（如果设置了 expected_keyword）
+    const targetServers = monitor.expected_keyword
+      ? monitor.expected_keyword.split(',').map(s => s.trim()).filter(s => s)
+      : null
+
+    for (const server of data.data) {
+      // 如果设置了目标服务器，只检查名称完全匹配的服务器
+      if (targetServers && targetServers.length > 0) {
+        const isTarget = targetServers.some(target =>
+          server.name === target
+        )
+        if (!isTarget) continue
+      }
+
+      const updatedAt = new Date(server.updated_at).getTime()
+      const timeSinceUpdate = now - updatedAt
+
+      if (timeSinceUpdate > offlineThreshold) {
+        const minutesOffline = Math.floor(timeSinceUpdate / 60000)
+        offlineServers.push(`${server.region}${server.name}(${minutesOffline}分钟)`)
+      }
+    }
+
+    if (offlineServers.length > 0) {
+      return {
+        success: false,
+        statusCode: response.status,
+        error: `离线服务器: ${offlineServers.join(', ')}`
+      }
+    }
+
+    return {
+      success: true,
+      statusCode: response.status
+    }
+  } catch (error: any) {
+    if (error.name === 'AbortError') {
+      return { success: false, statusCode: 0, error: `超时 (${timeout/1000}秒)` }
+    }
+    return { success: false, statusCode: 0, error: error.message }
   }
 }
 
@@ -480,8 +585,8 @@ async function createMonitor(request: Request, env: Env): Promise<Response> {
   const id = crypto.randomUUID()
 
   await env.DB.prepare(
-    `INSERT INTO monitors (id, name, url, check_interval, check_type, check_method, check_timeout, expected_status_codes, expected_keyword, forbidden_keyword, webhook_url, webhook_content_type, webhook_headers, webhook_body, webhook_username, is_active)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`
+    `INSERT INTO monitors (id, name, url, check_interval, check_type, check_method, check_timeout, expected_status_codes, expected_keyword, forbidden_keyword, komari_offline_threshold, webhook_url, webhook_content_type, webhook_headers, webhook_body, webhook_username, is_active)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`
   ).bind(
     id,
     body.name,
@@ -493,6 +598,7 @@ async function createMonitor(request: Request, env: Env): Promise<Response> {
     body.expected_status_codes || '200,201,204,301,302',
     body.expected_keyword || null,
     body.forbidden_keyword || null,
+    body.komari_offline_threshold || 3,
     body.webhook_url || null,
     body.webhook_content_type || 'application/json',
     body.webhook_headers ? JSON.stringify(body.webhook_headers) : null,
@@ -531,6 +637,7 @@ async function updateMonitor(id: string, request: Request, env: Env): Promise<Re
       expected_status_codes = ?,
       expected_keyword = ?,
       forbidden_keyword = ?,
+      komari_offline_threshold = ?,
       webhook_url = ?,
       webhook_content_type = ?,
       webhook_headers = ?,
@@ -549,6 +656,7 @@ async function updateMonitor(id: string, request: Request, env: Env): Promise<Re
     body.expected_status_codes || '200,201,204,301,302',
     body.expected_keyword || null,
     body.forbidden_keyword || null,
+    body.komari_offline_threshold || 3,
     body.webhook_url || null,
     body.webhook_content_type || 'application/json',
     body.webhook_headers ? JSON.stringify(body.webhook_headers) : null,

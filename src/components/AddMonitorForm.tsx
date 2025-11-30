@@ -11,12 +11,13 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
   const [name, setName] = useState('')
   const [url, setUrl] = useState('')
   const [interval, setInterval] = useState(5)
-  const [checkType, setCheckType] = useState<'http' | 'tcp'>('http')
+  const [checkType, setCheckType] = useState<'http' | 'tcp' | 'komari'>('http')
   const [checkMethod, setCheckMethod] = useState<'GET' | 'HEAD' | 'POST'>('GET')
   const [checkTimeout, setCheckTimeout] = useState(30)
   const [expectedStatusCodes, setExpectedStatusCodes] = useState('200,201,204,301,302')
   const [expectedKeyword, setExpectedKeyword] = useState('')
   const [forbiddenKeyword, setForbiddenKeyword] = useState('')
+  const [komariOfflineThreshold, setKomariOfflineThreshold] = useState(3)
   const [webhookUrl, setWebhookUrl] = useState('')
   const [contentType, setContentType] = useState('application/json')
   const [headers, setHeaders] = useState('')
@@ -37,6 +38,7 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
       setExpectedStatusCodes(editMonitor.expected_status_codes || '200,201,204,301,302')
       setExpectedKeyword(editMonitor.expected_keyword || '')
       setForbiddenKeyword(editMonitor.forbidden_keyword || '')
+      setKomariOfflineThreshold(editMonitor.komari_offline_threshold || 3)
       setWebhookUrl(editMonitor.webhook_url || '')
       setContentType(editMonitor.webhook_content_type || 'application/json')
       setHeaders(editMonitor.webhook_headers || '')
@@ -86,6 +88,7 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
         expected_status_codes: expectedStatusCodes.trim() || '200,201,204,301,302',
         expected_keyword: expectedKeyword.trim() || undefined,
         forbidden_keyword: forbiddenKeyword.trim() || undefined,
+        komari_offline_threshold: komariOfflineThreshold,
         webhook_url: webhookUrl.trim() || undefined,
         webhook_content_type: contentType,
         webhook_headers: Object.keys(parsedHeaders).length > 0 ? parsedHeaders : undefined,
@@ -119,6 +122,7 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
     setExpectedStatusCodes('200,201,204,301,302')
     setExpectedKeyword('')
     setForbiddenKeyword('')
+    setKomariOfflineThreshold(3)
     setWebhookUrl('')
     setContentType('application/json')
     setHeaders('')
@@ -144,13 +148,17 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
         </div>
 
         <div className="form-group">
-          <label htmlFor="url">网站URL</label>
+          <label htmlFor="url">
+            {checkType === 'komari' ? 'Komari API 地址' : '网站URL'}
+          </label>
           <input
             id="url"
             type="text"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://example.com 或 example.com:8080"
+            placeholder={checkType === 'komari'
+              ? 'https://your-komari-domain.com/api/client'
+              : 'https://example.com 或 example.com:8080'}
             required
           />
         </div>
@@ -165,10 +173,11 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
             <select
               id="checkType"
               value={checkType}
-              onChange={(e) => setCheckType(e.target.value as 'http' | 'tcp')}
+              onChange={(e) => setCheckType(e.target.value as 'http' | 'tcp' | 'komari')}
             >
               <option value="http">HTTP 检测</option>
               <option value="tcp">TCP 连通性检测 (Ping)</option>
+              <option value="komari">Komari 面板监控</option>
             </select>
           </div>
 
@@ -250,6 +259,40 @@ export default function AddMonitorForm({ onSuccess, onCancel, editMonitor }: Add
                 placeholder="例如: 离线 或 offline"
               />
               <span className="form-hint">响应内容包含此关键词则判定为故障（用于监控探针页面）</span>
+            </div>
+          </>
+        )}
+
+        {checkType === 'komari' && (
+          <>
+            <div className="form-group">
+              <label htmlFor="komariOfflineThreshold">离线判断阈值（分钟）</label>
+              <input
+                id="komariOfflineThreshold"
+                type="number"
+                min="1"
+                max="60"
+                value={komariOfflineThreshold}
+                onChange={(e) => setKomariOfflineThreshold(Number(e.target.value))}
+              />
+              <span className="form-hint">服务器超过此时间未更新状态则判定为离线</span>
+            </div>
+            <div className="form-group">
+              <label htmlFor="expectedKeyword">监控目标服务器（可选）</label>
+              <input
+                id="expectedKeyword"
+                type="text"
+                value={expectedKeyword}
+                onChange={(e) => setExpectedKeyword(e.target.value)}
+                placeholder="例如: FR①,HK-①,oracle"
+              />
+              <span className="form-hint">填写完整服务器名称，多个用逗号分隔；留空则监控所有服务器</span>
+            </div>
+            <div className="form-group">
+              <span className="form-hint" style={{ display: 'block', marginTop: '8px', padding: '12px', background: 'var(--bg-tertiary)', borderRadius: '8px' }}>
+                <strong>URL 格式：</strong>填写 Komari 面板的 API 地址，例如：<br />
+                <code style={{ background: 'var(--bg-secondary)', padding: '2px 6px', borderRadius: '4px' }}>https://your-domain.com/api/client</code>
+              </span>
             </div>
           </>
         )}
