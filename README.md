@@ -28,19 +28,17 @@
 
 ### 推荐：GitHub Actions 自动部署
 
-最简单的部署方式，一次配置，自动部署。
+最简单的部署方式，D1 和 KV 自动创建，一次配置，永久自动部署。
 
 **查看指南**: [GITHUB_ACTIONS_DEPLOY.md](./GITHUB_ACTIONS_DEPLOY.md)
 
-只需 6 个步骤：
+只需 4 个步骤：
 1. 获取 Cloudflare API Token 和 Account ID
 2. 配置 GitHub Secrets
-3. 运行一次数据库初始化 Workflow
-4. 更新 `wrangler.toml` 中的资源 ID
-5. 配置 Worker Cron 触发器
-6. 更新 Worker URL Secret
+3. 更新 `wrangler.toml` 中的资源 ID（首次部署后获取）
+4. 配置 Worker Cron 触发器
 
-完成后，每次 push 代码自动部署！
+完成后，每次 push 自动部署，D1 和 KV 自动管理！
 
 ### 其他部署方式
 

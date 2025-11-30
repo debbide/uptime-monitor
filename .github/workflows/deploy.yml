@@ -24,6 +24,30 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Setup D1 Database
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 create website-monitor || true
+        continue-on-error: true
+
+      - name: Apply Database Schema
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: d1 execute website-monitor --file=./schema.sql --remote
+        continue-on-error: true
+
+      - name: Setup KV Namespace
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: kv:namespace create "MONITOR_KV" || true
+        continue-on-error: true
+
       - name: Build frontend
         env:
           VITE_WORKER_URL: ${{ secrets.WORKER_URL }}
