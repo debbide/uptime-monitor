@@ -32,11 +32,10 @@
 
 **查看指南**: [GITHUB_ACTIONS_DEPLOY.md](./GITHUB_ACTIONS_DEPLOY.md)
 
-只需 4 个步骤：
-1. 获取 Cloudflare API Token 和 Account ID
-2. 配置 GitHub Secrets
-3. 更新 `wrangler.toml` 中的资源 ID（首次部署后获取）
-4. 配置 Worker Cron 触发器
+只需 3 个步骤：
+1. 获取 Cloudflare API Token 和 Account ID，配置 GitHub Secrets
+2. 首次 push 触发部署，自动创建 D1 和 KV 资源
+3. 获取资源 ID，更新 `wrangler.toml` 并配置 Cron 触发器
 
 完成后，每次 push 自动部署，D1 和 KV 自动管理！
 
