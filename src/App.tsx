@@ -19,6 +19,19 @@ function App() {
   const [authenticated, setAuthenticated] = useState(false)
   const [showChangePassword, setShowChangePassword] = useState(false)
   const [editingMonitor, setEditingMonitor] = useState<Monitor | null>(null)
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('theme')
+    return (saved as 'light' | 'dark') || 'light'
+  })
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  function toggleTheme() {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light')
+  }
 
   useEffect(() => {
     if (isAuthenticated()) {
@@ -118,6 +131,9 @@ function App() {
             <p className="header-subtitle">实时监控网站状态，及时Webhook通知</p>
           </div>
           <div className="header-actions">
+            <button className="btn-theme" onClick={toggleTheme} title={theme === 'light' ? '切换到深色模式' : '切换到浅色模式'}>
+              {theme === 'light' ? '🌙' : '☀️'}
+            </button>
             <button className="btn-change-password" onClick={() => setShowChangePassword(true)}>
               修改密码
             </button>
