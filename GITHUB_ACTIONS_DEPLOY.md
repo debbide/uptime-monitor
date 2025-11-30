@@ -1,8 +1,8 @@
 # GitHub Actions 自动部署指南
 
-使用 GitHub Actions 全自动部署到 Cloudflare，D1 数据库和 KV 自动创建。
+使用 GitHub Actions 全自动部署到 Cloudflare，所有配置通过 GitHub Secrets 管理。
 
-## 一次性配置步骤（3 步完成）
+## 一次性配置步骤（2 步完成）
 
 ### 1. 获取 Cloudflare 凭证
 
@@ -27,61 +27,46 @@
 2. 右侧可以看到 **Account ID**
 3. 点击复制
 
-### 2. 首次部署：创建资源
+### 2. 配置 GitHub Secrets（一次性设置）
+
+#### 步骤 2.1：首次配置基础 Secrets
 
 1. 进入 GitHub 仓库 → **Settings** → **Secrets and variables** → **Actions**
-2. 点击 **New repository secret**，添加以下密钥：
+2. 点击 **New repository secret**，添加以下 2 个密钥：
 
 | 名称 | 值 | 说明 |
 |------|-----|------|
 | `CLOUDFLARE_API_TOKEN` | 步骤 1 获取的 API Token | Cloudflare API 访问令牌 |
 | `CLOUDFLARE_ACCOUNT_ID` | 步骤 1 获取的 Account ID | Cloudflare 账户 ID |
-| `WORKER_URL` | 留空 | Worker URL（稍后更新） |
 
-3. 配置完成后，推送代码到 `main` 分支触发首次部署
-4. GitHub Actions 会自动创建：
-   - D1 数据库 `website-monitor`
-   - KV 命名空间 `MONITOR_KV`
-   - Worker 和 Pages
+3. 推送代码到 `main` 分支触发首次部署
+4. GitHub Actions 会自动创建 D1 数据库和 KV 命名空间
 
-### 3. 获取资源 ID 并更新配置
+#### 步骤 2.2：获取资源 ID 并添加到 Secrets
 
-#### 获取 D1 Database ID
+首次部署完成后，获取自动创建的资源 ID：
 
+**获取 D1 Database ID：**
 1. 访问 [Cloudflare Dashboard](https://dash.cloudflare.com) → **Workers & Pages** → **D1**
 2. 找到 `website-monitor` 数据库
 3. 点击进入，复制 **Database ID**
 
-#### 获取 KV Namespace ID
-
+**获取 KV Namespace ID：**
 1. 访问 [Cloudflare Dashboard](https://dash.cloudflare.com) → **Workers & Pages** → **KV**
 2. 找到 `MONITOR_KV` 命名空间
 3. 复制 **Namespace ID**
 
-#### 更新 wrangler.toml
+**添加资源 ID 到 GitHub Secrets：**
 
-编辑仓库中的 `wrangler.toml` 文件：
+返回 GitHub 仓库 → **Settings** → **Secrets and variables** → **Actions**，添加以下密钥：
 
-```toml
-[[kv_namespaces]]
-binding = "MONITOR_KV"
-id = "你的_kv_namespace_id"  # 替换为刚才复制的 KV ID
+| 名称 | 值 | 说明 |
+|------|-----|------|
+| `D1_DATABASE_ID` | 刚才复制的 D1 Database ID | D1 数据库 ID |
+| `KV_NAMESPACE_ID` | 刚才复制的 KV Namespace ID | KV 命名空间 ID |
+| `WORKER_URL` | `https://website-monitor.你的账号.workers.dev` | Worker URL（可选） |
 
-[[d1_databases]]
-binding = "DB"
-database_name = "website-monitor"
-database_id = "你的_d1_database_id"  # 替换为刚才复制的 D1 ID
-```
-
-提交并推送更改：
-
-```bash
-git add wrangler.toml
-git commit -m "Update Cloudflare resource IDs"
-git push
-```
-
-#### 配置 Worker Cron 触发器
+#### 步骤 2.3：配置 Cron 触发器（仅一次）
 
 1. 访问 [Cloudflare Dashboard](https://dash.cloudflare.com)
 2. 左侧菜单 → **Workers & Pages** → 找到 `website-monitor` Worker
@@ -91,12 +76,7 @@ git push
 6. 输入：`*/5 * * * *`（每 5 分钟执行一次）
 7. 点击 **Add Trigger**
 
-#### 更新 Worker URL Secret（可选）
-
-1. 在 Worker 页面复制完整的 Worker URL（例如：`https://website-monitor.你的账号.workers.dev`）
-2. 返回 GitHub 仓库 → **Settings** → **Secrets and variables** → **Actions**
-3. 编辑 `WORKER_URL` Secret，填入刚复制的 Worker URL
-4. 保存
+完成！现在推送代码会自动部署，无需手动修改 `wrangler.toml`。
 
 ---
 
@@ -108,9 +88,10 @@ git push
 1. 检查并创建 D1 数据库（如不存在）
 2. 应用数据库 Schema
 3. 检查并创建 KV 命名空间（如不存在）
-4. 构建前端
-5. 部署 Worker
-6. 部署到 Pages
+4. 从 GitHub Secrets 动态生成 `wrangler.toml`
+5. 构建前端
+6. 部署 Worker
+7. 部署到 Pages
 
 查看部署状态：
 - GitHub 仓库 → **Actions** 标签
@@ -124,6 +105,20 @@ git push
 
 ---
 
+## GitHub Secrets 总览
+
+完整配置需要以下 5 个 Secrets：
+
+| 名称 | 必需 | 何时添加 | 说明 |
+|------|------|---------|------|
+| `CLOUDFLARE_API_TOKEN` | 是 | 首次配置 | Cloudflare API 访问令牌 |
+| `CLOUDFLARE_ACCOUNT_ID` | 是 | 首次配置 | Cloudflare 账户 ID |
+| `D1_DATABASE_ID` | 是 | 首次部署后 | D1 数据库 ID |
+| `KV_NAMESPACE_ID` | 是 | 首次部署后 | KV 命名空间 ID |
+| `WORKER_URL` | 否 | 首次部署后 | Worker URL（用于前端 API 调用） |
+
+---
+
 ## 工作流程说明
 
 ### deploy.yml（主部署流程）
@@ -133,7 +128,8 @@ git push
 1. **Setup D1 Database**: 尝试创建 D1 数据库（如已存在则跳过）
 2. **Apply Database Schema**: 执行数据库迁移脚本
 3. **Setup KV Namespace**: 尝试创建 KV 命名空间（如已存在则跳过）
-4. **Build & Deploy**: 构建前端并部署 Worker 和 Pages
+4. **Generate wrangler.toml**: 从 GitHub Secrets 动态生成配置文件
+5. **Build & Deploy**: 构建前端并部署 Worker 和 Pages
 
 所有资源创建步骤都使用 `continue-on-error: true`，确保即使资源已存在也不会中断部署流程。
 
@@ -157,11 +153,18 @@ git push
 2. 找到 `MONITOR_KV` 命名空间
 3. 右侧显示 **Namespace ID**
 
+### Q: 为什么要在 Secrets 中配置 ID 而不是 wrangler.toml？
+
+- **安全性**: ID 不会暴露在代码仓库中
+- **灵活性**: 不同环境可以使用不同的资源 ID
+- **自动化**: 无需手动编辑文件，避免提交冲突
+
 ### Q: Actions 执行失败怎么办？
 
-1. 检查 GitHub Secrets 是否正确配置
+1. 检查 GitHub Secrets 是否正确配置（特别是 D1_DATABASE_ID 和 KV_NAMESPACE_ID）
 2. 确认 API Token 权限是否足够
 3. 查看 Actions 日志中的具体错误信息
+4. 如果是首次部署，确保先配置基础 Secrets 后再添加资源 ID
 
 ### Q: 如何查看部署后的网站？
 
@@ -177,35 +180,18 @@ git push
 
 ### Q: 需要更新数据库表结构？
 
-```bash
-# 本地执行（需要安装 wrangler）
-wrangler d1 execute website-monitor --file=./schema.sql
-```
+修改 `schema.sql` 文件后推送到 `main` 分支，GitHub Actions 会自动应用更新。
 
 或在 Cloudflare Dashboard 的 D1 Console 中直接执行 SQL。
 
 ---
 
-## Workflow 文件说明
-
-### deploy.yml
-- 自动触发：推送到 `main` 分支
-- 手动触发：Actions 页面手动运行
-- 功能：构建并部署 Worker 和 Pages
-
-### setup-database.yml
-- 仅手动触发
-- 功能：创建 D1 数据库和 KV 命名空间
-- 用途：初始化环境（只需运行一次）
-
----
-
 ## 总结
 
-完成上述 6 个步骤后，你的部署流程如下：
+完成上述 2 个步骤后，你的部署流程如下：
 
 ```
 修改代码 → git push → GitHub Actions 自动部署 → 完成！
 ```
 
-无需任何手动操作，完全自动化。
+无需手动修改 `wrangler.toml`，所有配置通过 GitHub Secrets 管理，完全自动化。

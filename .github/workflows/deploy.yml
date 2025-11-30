@@ -48,6 +48,28 @@ jobs:
           command: kv:namespace create "MONITOR_KV" || true
         continue-on-error: true
 
+      - name: Generate wrangler.toml from secrets
+        run: |
+          cat > wrangler.toml << EOF
+          name = "website-monitor"
+          main = "workers/monitor.ts"
+          compatibility_date = "2024-01-01"
+
+          [triggers]
+          crons = ["*/5 * * * *"]
+
+          [[kv_namespaces]]
+          binding = "MONITOR_KV"
+          id = "${{ secrets.KV_NAMESPACE_ID }}"
+
+          [[d1_databases]]
+          binding = "DB"
+          database_name = "website-monitor"
+          database_id = "${{ secrets.D1_DATABASE_ID }}"
+          EOF
+          echo "Generated wrangler.toml:"
+          cat wrangler.toml
+
       - name: Build frontend
         env:
           VITE_WORKER_URL: ${{ secrets.WORKER_URL }}

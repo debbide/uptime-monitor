@@ -28,16 +28,15 @@
 
 ### 推荐：GitHub Actions 自动部署
 
-最简单的部署方式，D1 和 KV 自动创建，一次配置，永久自动部署。
+最简单的部署方式，所有配置通过 GitHub Secrets 管理，无需修改代码。
 
 **查看指南**: [GITHUB_ACTIONS_DEPLOY.md](./GITHUB_ACTIONS_DEPLOY.md)
 
-只需 3 个步骤：
-1. 获取 Cloudflare API Token 和 Account ID，配置 GitHub Secrets
-2. 首次 push 触发部署，自动创建 D1 和 KV 资源
-3. 获取资源 ID，更新 `wrangler.toml` 并配置 Cron 触发器
+只需 2 个步骤：
+1. 获取 Cloudflare 凭证，配置基础 GitHub Secrets（2 个）
+2. 首次部署后，获取资源 ID 并添加到 GitHub Secrets（3 个）
 
-完成后，每次 push 自动部署，D1 和 KV 自动管理！
+完成后，`wrangler.toml` 自动生成，每次 push 自动部署！
 
 ### 其他部署方式
 
