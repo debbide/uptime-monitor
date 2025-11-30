@@ -50,7 +50,14 @@ jobs:
 
       - name: Generate wrangler.toml from secrets
         run: |
-          cat > wrangler.toml << EOF
+          if [ -z "${{ secrets.D1_DATABASE_ID }}" ] || [ -z "${{ secrets.KV_NAMESPACE_ID }}" ]; then
+            echo "⚠️ Warning: D1_DATABASE_ID or KV_NAMESPACE_ID not configured"
+            echo "Using existing wrangler.toml from repository"
+            echo "Please configure these secrets after first deployment"
+            cat wrangler.toml
+          else
+            echo "Generating wrangler.toml from GitHub Secrets..."
+            cat > wrangler.toml << EOF
           name = "website-monitor"
           main = "workers/monitor.ts"
           compatibility_date = "2024-01-01"
@@ -67,8 +74,9 @@ jobs:
           database_name = "website-monitor"
           database_id = "${{ secrets.D1_DATABASE_ID }}"
           EOF
-          echo "Generated wrangler.toml:"
-          cat wrangler.toml
+            echo "✅ Generated wrangler.toml:"
+            cat wrangler.toml
+          fi
 
       - name: Build frontend
         env:

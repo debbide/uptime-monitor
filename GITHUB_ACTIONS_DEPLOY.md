@@ -41,6 +41,7 @@
 
 3. 推送代码到 `main` 分支触发首次部署
 4. GitHub Actions 会自动创建 D1 数据库和 KV 命名空间
+5. **首次部署会使用仓库中的 wrangler.toml**（ID 为占位符），这是正常的
 
 #### 步骤 2.2：获取资源 ID 并添加到 Secrets
 
@@ -65,6 +66,10 @@
 | `D1_DATABASE_ID` | 刚才复制的 D1 Database ID | D1 数据库 ID |
 | `KV_NAMESPACE_ID` | 刚才复制的 KV Namespace ID | KV 命名空间 ID |
 | `WORKER_URL` | `https://website-monitor.你的账号.workers.dev` | Worker URL（可选） |
+
+**触发重新部署：**
+
+配置完成后，推送任意更改或手动触发 GitHub Actions（Actions 标签 → Deploy to Cloudflare → Run workflow），这次部署会使用 Secrets 中的 ID 动态生成正确的 `wrangler.toml`。
 
 #### 步骤 2.3：配置 Cron 触发器（仅一次）
 
