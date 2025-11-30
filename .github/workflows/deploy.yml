@@ -82,8 +82,6 @@ jobs:
           fi
 
       - name: Build frontend
-        env:
-          VITE_WORKER_URL: ${{ secrets.WORKER_URL }}
         run: npm run build
 
       - name: Deploy Worker

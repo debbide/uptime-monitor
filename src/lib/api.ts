@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_WORKER_URL || 'http://localhost:8787'
+const API_URL = ''
 
 export interface Monitor {
   id: string
