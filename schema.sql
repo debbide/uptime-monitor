@@ -8,9 +8,9 @@ CREATE TABLE IF NOT EXISTS admin_credentials (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- 插入默认管理员密码 (admin123 的 bcrypt hash)
+-- 插入默认管理员密码 (admin123 的 SHA-256 hash)
 INSERT INTO admin_credentials (password_hash)
-VALUES ('$2a$10$rPxKqKzQ5vJ5hZfYxKxB4.VJTnYmZhGxKqE5xZxZxZxZxZxZxZxZx');
+VALUES ('JAvlGPq9JyTdtvBO6x2llnRI1+gxwIyPqCKAn3THIKk=');
 
 -- 监控配置表
 CREATE TABLE IF NOT EXISTS monitors (
