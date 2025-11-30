@@ -26,35 +26,26 @@
 
 ## 快速开始
 
-详细部署指南请查看 [DEPLOYMENT.md](./DEPLOYMENT.md)
+### 推荐：GitHub Actions 自动部署
 
-### 1. 创建数据库
+最简单的部署方式，一次配置，自动部署。
 
-```bash
-wrangler d1 create website-monitor
-wrangler d1 execute website-monitor --file=./schema.sql
-```
+**查看指南**: [GITHUB_ACTIONS_DEPLOY.md](./GITHUB_ACTIONS_DEPLOY.md)
 
-### 2. 创建 KV
+只需 6 个步骤：
+1. 获取 Cloudflare API Token 和 Account ID
+2. 配置 GitHub Secrets
+3. 运行一次数据库初始化 Workflow
+4. 更新 `wrangler.toml` 中的资源 ID
+5. 配置 Worker Cron 触发器
+6. 更新 Worker URL Secret
 
-```bash
-wrangler kv:namespace create "MONITOR_KV"
-```
+完成后，每次 push 代码自动部署！
 
-### 3. 更新配置
+### 其他部署方式
 
-将生成的 ID 更新到 `wrangler.toml`
-
-### 4. 部署
-
-```bash
-# Worker
-wrangler deploy
-
-# 前端
-npm install && npm run build
-wrangler pages deploy dist --project-name=website-monitor
-```
+**网页界面部署**: [DEPLOYMENT.md](./DEPLOYMENT.md) - 方式一
+**命令行部署**: [DEPLOYMENT.md](./DEPLOYMENT.md) - 方式二
 
 ## 本地开发
 
