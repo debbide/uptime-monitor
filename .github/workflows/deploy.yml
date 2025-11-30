@@ -52,7 +52,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: d1 execute --database-id=${{ secrets.D1_DATABASE_ID }} --file=./schema.sql --remote
+          command: d1 execute DB --file=./schema.sql --remote
 
       - name: Build frontend
         run: npm run build
