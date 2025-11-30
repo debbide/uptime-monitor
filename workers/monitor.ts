@@ -41,7 +41,7 @@ export default {
     ctx.waitUntil(checkAllMonitors(env))
   },
 
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: corsHeaders })
     }
@@ -93,7 +93,7 @@ export default {
         return await changePassword(request, env)
       }
 
-      return await serveStaticAsset(request, env)
+      return await serveStaticAsset(request, env, ctx)
     } catch (error: any) {
       console.error('Error:', error)
       return jsonResponse({ error: error.message }, 500)
@@ -101,13 +101,13 @@ export default {
   }
 }
 
-async function serveStaticAsset(request: Request, env: Env): Promise<Response> {
+async function serveStaticAsset(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   try {
     return await getAssetFromKV(
       {
         request,
-        waitUntil() {},
-      } as FetchEvent,
+        waitUntil: ctx.waitUntil.bind(ctx),
+      } as unknown as FetchEvent,
       {
         ASSET_NAMESPACE: env.__STATIC_CONTENT,
         ASSET_MANIFEST: JSON.parse(env.__STATIC_CONTENT_MANIFEST),
@@ -120,8 +120,8 @@ async function serveStaticAsset(request: Request, env: Env): Promise<Response> {
       const notFoundResponse = await getAssetFromKV(
         {
           request: new Request(`${new URL(request.url).origin}/index.html`, request),
-          waitUntil() {},
-        } as FetchEvent,
+          waitUntil: ctx.waitUntil.bind(ctx),
+        } as unknown as FetchEvent,
         {
           ASSET_NAMESPACE: env.__STATIC_CONTENT,
           ASSET_MANIFEST: JSON.parse(env.__STATIC_CONTENT_MANIFEST),
